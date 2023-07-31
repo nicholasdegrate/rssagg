@@ -1,0 +1,7 @@
+@endpoint = http://localhost:8080/v1
+
+###
+GET {{ endpoint }}/healthz HTTP/1.1
+###
+
+GET {{endpoint}}/err HTTP/1.1
