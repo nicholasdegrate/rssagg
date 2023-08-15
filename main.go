@@ -20,8 +20,8 @@ type apiConfig struct {
 func main() {
 	godotenv.Load()
 	
-	db_url := os.Getenv("DB_URL")
-	if db_url == "" {
+	dbURL := os.Getenv("DB_URL")
+	if dbURL == "" {
 		log.Fatal("DB_URL is not found in environment")
 	}
 	
@@ -29,19 +29,17 @@ func main() {
 	if port == "" {
 		log.Fatal("PORT is not found in environment")
 	}
-	conn, err := sql.Open("postgres", db_url)
+	conn, err := sql.Open("postgres", dbURL)
 
 	if err != nil {
-		log.Fatal("Can't connect to db")
-	}
-	queries, err := database.New(conn)
-	if err != nil {
-		log.Fatal()
+		log.Fatal("Cant connect to database:", err)
 	}
 
+	queries := database.New(conn)
 	apiCfg := apiConfig{
 		DB: queries,
 	}
+
 	router := chi.NewRouter()
 
 	router.Use(cors.Handler(cors.Options{
@@ -54,9 +52,12 @@ func main() {
 	}))
 
 	v1Router := chi.NewRouter()
-
 	v1Router.Get("/healthz", handlerReadiness)
 	v1Router.Get("/err", handlerErr)
+	v1Router.Post("/users", apiCfg.handlerCreateUser)
+	v1Router.Get("/users", apiCfg.middlewareAuth(apiCfg.handlerGetUser))
+	v1Router.Post("/feeds", apiCfg.middlewareAuth(apiCfg.handlerCreateFeed))
+	v1Router.Get("/feeds", apiCfg.handlerGetFeeds)
 	router.Mount("/v1", v1Router)
 
 	srv := &http.Server{
@@ -65,7 +66,7 @@ func main() {
 	}
 
 	log.Printf("Server starting n port %v", port)
-	err := srv.ListenAndServe()
+	err = srv.ListenAndServe()
 
 	if err != nil {
 		log.Fatal(err)
